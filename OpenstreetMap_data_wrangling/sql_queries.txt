@@ -1,0 +1,273 @@
+Microsoft Windows [Version 10.0.16299.192]
+(c) 2017 Microsoft Corporation. All rights reserved.
+
+C:\>cd sqlite_windows
+
+### Creating database
+C:\sqlite_windows>sqlite3 desMoines.db
+SQLite version 3.9.2 2015-11-02 18:31:45
+Enter ".help" for usage hints.
+sqlite> CREATE TABLE nodes (
+   ...>     id INTEGER PRIMARY KEY NOT NULL,
+   ...>     lat REAL,
+   ...>     lon REAL,
+   ...>     user TEXT,
+   ...>     uid INTEGER,
+   ...>     version INTEGER,
+   ...>     changeset INTEGER,
+   ...>     timestamp TEXT
+   ...> );
+sqlite>
+
+### Creating tables 
+sqlite> CREATE TABLE nodes_tags (
+   ...>     id INTEGER,
+   ...>     key TEXT,
+   ...>     value TEXT,
+   ...>     type TEXT,
+   ...>     FOREIGN KEY (id) REFERENCES nodes(id)
+   ...> );
+sqlite>
+sqlite> CREATE TABLE ways (
+   ...>     id INTEGER PRIMARY KEY NOT NULL,
+   ...>     user TEXT,
+   ...>     uid INTEGER,
+   ...>     version TEXT,
+   ...>     changeset INTEGER,
+   ...>     timestamp TEXT
+   ...> );
+sqlite>
+sqlite> CREATE TABLE ways_tags (
+   ...>     id INTEGER NOT NULL,
+   ...>     key TEXT NOT NULL,
+   ...>     value TEXT NOT NULL,
+   ...>     type TEXT,
+   ...>     FOREIGN KEY (id) REFERENCES ways(id)
+   ...> );
+sqlite>
+sqlite> CREATE TABLE ways_nodes (
+   ...>     id INTEGER NOT NULL,
+   ...>     node_id INTEGER NOT NULL,
+   ...>     position INTEGER NOT NULL,
+   ...>     FOREIGN KEY (id) REFERENCES ways(id),
+   ...>     FOREIGN KEY (node_id) REFERENCES nodes(id)
+   ...> );
+   
+### Importing data from csv files in tables
+sqlite> .mode csv
+sqlite> .import newFile.csv myTable
+C:\sqlite_windows>sqlite3 desMoines.db
+SQLite version 3.9.2 2015-11-02 18:31:45
+Enter ".help" for usage hints.
+sqlite> .mode csv
+sqlite> .import ways_nodes.csv ways_nodes
+sqlite> select count(*) from ways_nodes;
+1073071
+sqlite> .import ways_tags.csv ways_tags
+sqlite> select count(*) from ways_tags;
+303251
+sqlite> .import nodes.csv nodes
+sqlite> .import nodes_tags.csv nodes_tags
+sqlite> .import ways.csv ways
+
+### Number of Nodes
+sqlite> select count(*) from nodes;
+915603
+
+### Number of ways
+sqlite> SELECT COUNT(*) FROM ways;
+64668
+
+###
+sqlite> SELECT COUNT(DISTINCT(e.uid))
+   ...> FROM (SELECT uid FROM nodes UNION ALL SELECT uid FROM ways) e;
+457
+
+### Number of unique users 
+sqlite> SELECT e.user, COUNT(*) as num
+   ...> FROM (SELECT user FROM nodes UNION ALL SELECT user FROM ways) e
+   ...> GROUP BY e.user
+   ...> ORDER BY num DESC
+   ...> LIMIT 10;
+
+Jeff Ollies Bot|287253
+Jeff Ollie|254153
+iowahwyman|181992
+woodpeck_fixbot|78494
+jgruca|63775
+BAC|16031
+keithly12|11981
+ChartingFool|6730
+Brutus|5416
+Milo|5343
+
+### Top 10 contributing users 
+sqlite> SELECT value, COUNT(*) as num
+   ...> FROM nodes_tags
+   ...> WHERE key like '%amenity%'
+   ...> GROUP BY value
+   ...> ORDER BY num DESC
+   ...> LIMIT 10;
+'place_of_worship'|273
+'restaurant'|191
+'bench'|188
+'fast_food'|132
+'fountain'|83
+'school'|64
+'bar'|44
+'cafe'|42
+'grave_yard'|41
+'fuel'|37
+
+
+### Number of users appearing only once
+sqlite> SELECT COUNT(*)
+   ...> FROM
+   ...>     (SELECT e.user, COUNT(*) as num
+   ...>      FROM (SELECT user FROM nodes UNION ALL SELECT user FROM ways) e
+   ...>      GROUP BY e.user
+   ...>      HAVING num=1)  u;
+
+84
+
+### Biggest Religion
+sqlite> SELECT nodes_tags.value, COUNT(*) as num
+   ...> FROM nodes_tags
+   ...> JOIN (SELECT DISTINCT(id) FROM nodes_tags WHERE value like '%place_of_worship%') i
+   ...> ON nodes_tags.id=i.id
+   ...> WHERE nodes_tags.key like '%religion%'
+   ...> GROUP BY nodes_tags.value
+   ...> ORDER BY num DESC
+   ...> LIMIT 1;
+'christian'|261
+
+### Most Popular cuisines
+sqlite> SELECT nodes_tags.value, COUNT(*) as num
+   ...> FROM nodes_tags
+   ...>     JOIN (SELECT DISTINCT(id) FROM nodes_tags WHERE value like '%restaurant%') i
+   ...>     ON nodes_tags.id=i.id
+   ...> WHERE nodes_tags.key like '%cuisine%'
+   ...> GROUP BY nodes_tags.value
+   ...> ORDER BY num DESC;
+'american'|28
+'pizza'|23
+'mexican'|17
+'chinese'|16
+'sandwich'|11
+'asian'|5
+'steak_house'|4
+'sushi'|4
+'barbecue'|3
+'indian'|3
+'international'|3
+'italian'|3
+'japanese'|3
+'seafood'|3
+'chicken'|2
+'french'|2
+'mediterranean'|2
+'regional'|2
+'Chinese_Fast_Food'|1
+'burger'|1
+'deli'|1
+'ecuadorian'|1
+'greek'|1
+'ice_cream'|1
+'keba'|1
+'tacos;mexican'|1
+'thai'|1
+'thai;lao'|1
+
+### Top 10 postal codes 
+sqlite> SELECT tags.value, COUNT(*) as count
+   ...> FROM (SELECT * FROM nodes_tags
+   ...>   UNION ALL
+   ...>       SELECT * FROM ways_tags) tags
+   ...> WHERE tags.key like '%postcode%'
+   ...> GROUP BY tags.value
+   ...> ORDER BY count DESC limit 10;
+'50266'|997
+'50265'|825
+'50322'|817
+'50312'|757
+'50325'|592
+'50310'|490
+'50309'|227
+'50311'|226
+'50021'|162
+'50131'|159
+
+### Number of cafes
+sqlite> SELECT nodes_tags.value, COUNT(*) as num
+   ...> FROM nodes_tags
+   ...>     JOIN (SELECT DISTINCT(id) FROM nodes_tags WHERE value like '%coffee_shop%') i
+   ...>     ON nodes_tags.id=i.id
+   ...> WHERE nodes_tags.key like '%name%'
+   ...> GROUP BY nodes_tags.value
+   ...> ORDER BY num DESC;
+'Starbucks'|10
+'Caribou Coffee'|3
+'Dunkin' Donuts'|2
+'Scooter's'|2
+'Grounds For Celebration'|2
+'Friedrich's World Coffees'|1
+'Building 3000'|1
+'Caribou Coffee & Einstein Bros. Bagels'|1
+'Corazon Coffee Roasters'|1
+'Greenway Crossing'|1
+'Inspired Grounds Cafe'|1
+'Jordan Creek Town Center'|1
+'La Barista Coffee'|1
+'Mars Cafe'|1
+'Normandy Plaza'|1
+'Ritual Cafe'|1
+'St. Kilda'|1
+'Timbuktu Coffee Bar'|1
+'Valley West Mall'|1
+'West Glen Town Center'|1
+sqlite>
+
+
+#### Sort Cities By Count, Descending
+sqlite> SELECT tags.value, COUNT(*) as count
+   ...> FROM (SELECT * FROM nodes_tags UNION ALL
+   ...>       SELECT * FROM ways_tags) tags
+   ...> WHERE tags.key LIKE '%city%'
+   ...> GROUP BY tags.value
+   ...> ORDER BY count DESC LIMIT 10;
+b'West Des Moines'|1311
+b'Des Moines'|1101
+b'Ankeny'|274
+b'Clive'|201
+b'Johnston'|156
+b'Urbandale'|144
+b'Windsor Heights'|34
+b'Waukee'|21
+b'van meter'|15
+b'Altoona'|10
+
+### Find postcodes from Altoona city with zipcode 50009
+sqlite> SELECT *
+   ...> FROM nodes
+   ...> WHERE id IN (SELECT DISTINCT(id) FROM nodes_tags WHERE key like '%postcode%' AND value like '%50009%');
+354403072|41.6433048|-93.4963368|maxerickson|360392|3|46843414|2017-03-14T14:59:54Z
+367080467|41.6430727|-93.4810078|maxerickson|360392|3|46843414|2017-03-14T14:59:54Z
+2810066946|41.6398606|-93.4755425|1121 Venbury|2043542|1|21873757|2014-04-22T21:37:32Z
+3299645061|41.6493224|-93.5090908|Nate Gould|2082834|1|28267618|2015-01-20T02:57:29Z
+4734386600|41.6498526|-93.4730143|maxerickson|360392|1|46843414|2017-03-14T14:59:50Z
+5145326136|41.6424295|-93.465783|Iowa Kid|703517|3|52612883|2017-10-04T03:21:54Z
+
+### More Information on node from Postal Id
+sqlite> SELECT *
+   ...> FROM nodes_tags
+   ...> WHERE id='354403072';
+354403072|'city'|'Altoona'|'addr'
+354403072|'housenumber'|'2720'|'addr'
+354403072|'postcode'|'50009'|'addr'
+354403072|'street'|'8th Street Southwest'|'addr'
+354403072|'amenity'|'doctors'|'regular'
+354403072|'name'|'UnityPoint Clinic Family Medicine \xe2\x80\x93 Altoona'|'regular'
+354403072|'operator'|'UnityPoint Health'|'regular'
+354403072|'phone'|'(515) 967-0133'|'regular'
+354403072|'website'|'https://www.unitypoint.org/desmoines/clinic.aspx?id=104'|'regular'
+sqlite>

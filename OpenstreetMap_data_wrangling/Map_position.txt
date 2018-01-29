@@ -1,0 +1,9 @@
+Link to the map position : https://overpass-api.de/api/map?bbox=-93.8054,41.4785,-93.3982,41.6593
+
+short description of the area : The area chosen is Des Moines city in Polk County in Iowa, United States. The bounds of the area are - 
+								1. Minimum Latitude - 41.4785
+								2. Maximum Latitude - 41.6593
+								3. Minimum Longitude - -93.8054
+								4. Maximum Longitude - -93.3982
+
+Reason to choose the area : After having stayed in Des Moines for almost 3 years for work, I was curious to explore it through database analysis    
