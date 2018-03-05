@@ -1,0 +1,1566 @@
+---
+title: "EDA on White Wine Quality"
+author: "Manasi Sheth"
+date: "February 17, 2018"
+output:
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+This project focuses on exploratory data analysis of white wine data set 
+downloaded from - 
+https://s3.amazonaws.com/udacity-hosted-downloads/ud651/wineQualityWhites.csv
+
+The aim of this project is to analyze, which physicochemical properties such 
+as alcohol content, acidity, sugar content etc. have effect on wine quality. 
+
+First, we begin with exploring data on broader sense and obtaining basic 
+information. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+library(ggplot2)
+library(dplyr)
+library(plotly)
+library(shiny)
+library(tidyr)
+```
+
+```{r echo=FALSE, Load_the_Data}
+# Load the Data
+library(readr)
+setwd("D:/Udacity/EDA/Project_4")
+DF = read.csv("wineQualityWhites.csv")
+```
+
+```{r echo=FALSE}
+#shape of DF
+dim(DF)
+nrow(DF)
+ncol(DF)
+```
+We can see that our data set comprises of 4898 rows and 13 columns. The column 
+names are as listed below - 
+
+```{r echo=FALSE}
+names(DF)
+```
+
+Before, we continue further we will drop X column or the id column which 
+represents row number or the record number. 
+
+```{r echo=FALSE}
+DF <- within(DF, rm(X))
+```
+
+Next, we take a look at high-level, non statistical summary of entire data 
+frame. 
+
+```{r echo=FALSE}
+#get high-level, non statistical summary of entire object
+str(DF)
+```
+
+From the above results, we can see that we have all the 13 columns belonging to 
+numerical or integer datatype. Next we look at the statistical summary of 
+the data set. 
+
+```{r echo=FALSE}
+#Statistical summary of object
+summary(DF)
+```
+From the above statistical summary, we can see that other than citric acid, 
+no other variables/columns have records with value starting with 0. Also, 
+We do not have any NA's listed for any variable, hence we can conclude that we 
+do not have any missing values in our data set.  
+
+Before doing further analysis, we will look into the SPLOM, Histograms and 
+correlations of our data set by using pairs.panels function. The reason to do 
+this first is, as we will do further analysis, we would like to see if there 
+is any necessity to remove outliers for certain columns based on the 
+correlation between the variables. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(psych)
+pairs.panels(DF)
+```
+
+From the above visualization, we can see that the variables fixed.acidity, 
+residual.sugar, chlorides, free.sulfur.dioxide, total.sulfur.dioxide, density, 
+pH and alcohol have weak to strong correlations with other variables. So we 
+will remove outliers from these variables if necessary. The variables like 
+volatile.acidity, citric acid and sulfates have no relationship with other 
+variables so we will not consider removing outliers from those variables. 
+Later in bivariate analysis, we will again take a look at the correlation 
+matrix after transformations and outlier removals. 
+
+We will do further analysis of all the variables. First, we begin with 
+analyzing the quality. 
+
+```{r echo=FALSE}
+table(DF$quality)
+```
+From the above output, we can see the distribution of the quality for different 
+values. We now analyze quality using histogram. 
+
+```{r echo=FALSE}
+library(plotly)
+f <- list(
+  family = "Courier New, monospace",
+  size = 18,
+  color = "#7f7f7f"
+)
+```
+
+```{r echo=FALSE, Univariate_Plots}
+plot_ly(x = DF$quality, type = "histogram") %>%
+  layout(xaxis = list(title = "quality", titlefont = f),
+         yaxis = list(title = "Frequency", titlefont = f),
+         title = "Histogram For quality")
+```
+From the histogram and table output, we can see that most of the wine quality 
+has score of 6. Surprisingly, there are no wines with score of 10 and with 
+scores between 0 - 2. There are only 20 wines with score of 3 and only 5 wines 
+with score of 9. We don't worry about the outliers for quality as this is going 
+to be our dependent variable.   
+
+For further analysis of the data we will create a new factor variable labeled 
+as factor_wine_quality based on quality. For the new column we will classify - 
+wines with score 5 and less than 5 under the category of "Low Quality", wines 
+with score of 6 will be under category of "Medium Quality" and wines with score 
+greater than 6 will be under category "High Quality". 
+
+```{r echo=FALSE}
+                                                   
+wine_dataset <- DF
+wine_dataset$factor_wine_quality <- cut(DF$quality, breaks = c(0,6,7,11), 
+                                        right = FALSE, labels = 
+                                          c("Low Quality", "Medium Quality", 
+                                            "High Quality"))
+```
+
+We will analyze the new variable factor_wine_quality to see how many wines 
+are under "Low Quality", "Average Quality" and "High Quality".
+
+```{r echo=FALSE}
+table(wine_dataset$factor_wine_quality)
+```
+
+
+```{r echo=FALSE}
+plot_ly(wine_dataset, x = wine_dataset$factor_wine_quality, type = 'histogram',
+        marker = list(color = 'rgb(158,202,225)',
+                      line = list(color = 'rgb(8,48,107)',
+                                  width = 1.5))
+        ) %>%
+  layout(title = "White Wine Quality Bar Chart",
+         xaxis = list(title = "Wine Quality"),
+         yaxis = list(title = "Count"))
+```
+
+From the above results, we can see that most of the wines in our data set fall 
+under "Medium Quality". It is interesting to note that even though medium 
+quality wines comprises of only the wines with quality score 6 they still 
+constitute a larger potion of the distribution. 
+
+Next, we will take look at the fixed acidity column. Fixed acidity column 
+consists of data of acids present in the wine which are fixed or nonvolatile
+(which do not evaporate readily). We want to see how fixed acidity would 
+affect the quality. 
+
+```{r echo=FALSE}
+## Fixed acidity
+plot_ly(x = wine_dataset$fixed.acidity, type = "histogram") %>%
+  layout(xaxis = list(title = "Fixed acidity", titlefont = f),
+         yaxis = list(title = "Frequency", titlefont = f),
+         title = "Histogram For Fixed Acidity")
+```
+
+From the histogram, we can say that Fixed acidity is fairly normally 
+distributed. From the graph we can see that the fixed acidity varies from 
+3.8 to 14.2 g/dm^3. Most of the records are between 4.4 g/dm^3 and 10 g/dm^3. 
+We will still see if there are any outliers present in the data. 
+
+```{r echo=FALSE}
+##box plot
+plot_ly(data = wine_dataset, y = ~fixed.acidity, type = "box")%>%
+  layout(xaxis = list(title = "", titlefont = f),
+         yaxis = list(title = "Fixed acidity", titlefont = f),
+         title = "Box Plot for Fixed acidity")
+```
+We can see from the above box plot, that there are outliers present for the 
+fixed_acidity column. 
+
+We will analyze how many outliers we have using Interquartile ranges i.e. 
+if a data point is below Q1 - 1.5×IQR or above Q3 + 1.5×IQR, 
+it will be considered as an outlier.  
+
+```{r echo=FALSE}
+q1 = quantile(wine_dataset$fixed.acidity, na.rm=TRUE)[["25%"]]
+q3 = quantile(wine_dataset$fixed.acidity, na.rm=TRUE)[["75%"]]
+
+
+upper_outliers = wine_dataset$fixed.acidity[(wine_dataset$fixed.acidity 
+                >= q3 + 1.5*IQR(wine_dataset$fixed.acidity, na.rm=TRUE)) & !is.na(wine_dataset$fixed.acidity)]
+lower_outliers = wine_dataset$fixed.acidity[(wine_dataset$fixed.acidity 
+                <= q1 - 1.5*IQR(wine_dataset$fixed.acidity, na.rm=TRUE)) & !is.na(wine_dataset$fixed.acidity)]
+```
+The number of upper outliers is - 
+```{r echo=FALSE}
+length(upper_outliers)
+```
+The number of lower outliers is - 
+```{r echo=FALSE}
+length(lower_outliers)
+```
+Even though we have 126 outliers using IQR, removing all of them does not make 
+any sense as we can see from histogram and correlations that only few data 
+points are away from normal distribution. So, we will consider working on data 
+set by just extracting 2 percentile to 98 percentile of attribute values.
+
+```{r echo=FALSE}
+wine_dataset <- subset(wine_dataset, wine_dataset$fixed.acidity > quantile
+          (wine_dataset$fixed.acidity, c(.01)) & wine_dataset$fixed.acidity < quantile(wine_dataset$fixed.acidity, c(.99)))
+
+#ggplot(aes(x=DF$fixed.acidity), data=DF)+
+#  geom_histogram(binwidth=0.01) 
+
+plot_ly(data = wine_dataset, y = ~fixed.acidity, type = "box")%>%
+  layout(xaxis = list(title = "", titlefont = f),
+         yaxis = list(title = "Fixed acidity", titlefont = f),
+         title = "Box Plot for Fixed acidity")
+```
+The above box plot is the box plot for fixed.acidity after removing the 
+outliers. Depending on further analysis, we will determine if there is need 
+to remove remaining outliers. 
+
+We then move on to analyzing volatile acidity. Volatile acid refers to the 
+amount of acetic acid in the wine, which at too high levels can lead to an 
+unpleasant, vinegar taste. 
+
+```{r echo=FALSE}
+## Volatile acidity
+plot_ly(x = wine_dataset$volatile.acidity, type = "histogram") %>%
+       layout(xaxis = list(title = "Volatile acidity", titlefont = f),
+              yaxis = list(title = "Frequency", titlefont = f),
+              title = "Histogram For Volatile Acidity")
+```
+
+The data varies from 0.08 gm/dm^3 to 1.1 gm/dm^3. From the histogram, we see 
+that the histogram is little bit right skewed so perhaps a transformation 
+like square root would be appropriate here. 
+
+```{r echo=FALSE}
+wine_dataset$new.volatile.acidity <- sqrt(wine_dataset$volatile.acidity)
+plot_ly(x = wine_dataset$new.volatile.acidity, type = "histogram", xbins=list(
+        start= min(wine_dataset$new.volatile.acidity) - 0.5,
+        end=max(wine_dataset$new.volatile.acidity) + 0.5,
+        size=0.02
+    )) %>%
+       layout(xaxis = list(title = "Volatile acidity", titlefont = f),
+              yaxis = list(title = "Frequency", titlefont = f),
+              title = "Histogram For Volatile Acidity")
+```
+This histogram looks far better now. We can see that the data is distributed 
+between 0.29 g/dm^3 to 1.05 g/dm^3 approximately. We do not worry about 
+outliers for the transformed data as we know that volatile acidity does not 
+have any correlation with other variables. We will consider removing outliers 
+later if required in bivariate analysis. 
+
+
+```{r echo=FALSE}
+##box plot
+#plot_ly(data = wine_dataset, y = ~new.volatile.acidity,  type = "box")
+```
+
+We now begin analyzing citric acid. 
+
+```{r echo=FALSE}
+## Citric acid 
+plot_ly(x = wine_dataset$citric.acid, type = "histogram") %>%
+      layout(xaxis = list(title = "Citric Acid", titlefont = f),
+             yaxis = list(title = "Frequency", titlefont = f),
+             title = "Histogram For Citric Acid")
+```
+From the histogram, we can see that the data varies between 0 to 1.66. 
+The distribution looks somewhat normal, so we do not need to apply any 
+transformation here. Since there is no correlation between citric acid and 
+other variables, we do not consider removing outliers. 
+
+```{r echo=FALSE}
+##box plot
+#plot_ly(data = wine_dataset, y = ~citric.acid, type = "box")
+```
+
+After citric acid, we take a look at the residual sugar. Residual sugar 
+is the amount of sugar remaining after fermentation stops.
+
+```{r echo=FALSE}
+## Residual sugar
+plot_ly(x = wine_dataset$residual.sugar, type = "histogram") %>%
+  layout(xaxis = list(title = "Residual Sugar", titlefont = f),
+         yaxis = list(title = "Frequency", titlefont = f),
+         title = "Histogram For Residual Sugar")
+```
+
+It's rare to find wines with less than 1 gram/liter and wines with greater 
+than 45 grams/liter are considered sweet. From histogram, we can see have 75 
+wines where residual sugar less than 1 gram/liter with value 0.75 gram/liter 
+and 1 wine greater than 45 grams/liter with value 65.75 gram/liter of residual 
+sugar.  We can see that the histogram is right skewed, so here we would try 
+log transformation on Residual sugar to see if it changes our understanding of 
+the data
+
+
+```{r echo=FALSE}
+wine_dataset$new.residual.sugar <- log(wine_dataset$residual.sugar, base = 10)
+plot_ly(x = wine_dataset$new.residual.sugar, type = "histogram"
+    ) %>%
+       layout(xaxis = list(title = "Residual Sugar", titlefont = f),
+              yaxis = list(title = "Frequency", titlefont = f),
+              title = "Histogram For Residual Sugar")
+```
+We can see that now we have a bimodal distribution with two peaks at 0.125 and 
+0.875. We can see the distribution now begins with small negative value of 
+-0.225 and proceeds till 1.825. Next we try to analyze if there are any 
+outliers present for the new transformed data. 
+
+```{r echo=FALSE}
+##box plot
+plot_ly(data = wine_dataset, y = ~new.residual.sugar, type = "box")%>%
+  layout(xaxis = list(title = "", titlefont = f),
+         yaxis = list(title = "Residual Sugar", titlefont = f),
+         title = "Box Plot for Residual Sugar")
+```
+
+As seen from the box plot, Our transformed data for residual sugar has no 
+outliers. Next, we look at the chlorides which refer to the amount of salt in 
+the wine. 
+
+```{r echo=FALSE}
+## chlorides
+plot_ly(x = wine_dataset$chlorides, type = "histogram") %>%
+  layout(xaxis = list(title = "chlorides", titlefont = f),
+         yaxis = list(title = "Frequency", titlefont = f),
+         title = "Histogram For chlorides")
+```
+
+The data has normal distribution with certain outliers present. As seen from 
+the histogram, the data varies from 0.013 to 0.345. It would be interesting to 
+see how amount of chlorides/salt affect the wine quality. We will look at that 
+in bivariate and multivariate analysis. 
+
+We will now see if chlorides has any outliers present. 
+```{r echo=FALSE}
+plot_ly(data = wine_dataset, y = ~chlorides, type = "box")%>%
+  layout(xaxis = list(title = "", titlefont = f),
+         yaxis = list(title = "Chlorides", titlefont = f),
+         title = "Box Plot for Chlorides")
+```
+From the boxplot, it can be seen that there are considerable outliers present 
+in the data. As we can see from the correlation plot and normal distribution, 
+we do not need to remove all the outliers instead we will follow the same 
+technique as used before of considering the data between 2 and 90 percentile 
+values. 
+
+```{r echo=FALSE}
+wine_dataset <- subset(wine_dataset, wine_dataset$chlorides > 
+          quantile(wine_dataset$chlorides, c(.01)) & wine_dataset$chlorides < quantile(wine_dataset$chlorides, c(.99)))
+
+#ggplot(aes(x=DF$fixed.acidity), data=DF)+
+#  geom_histogram(binwidth=0.01) 
+plot_ly(data = wine_dataset, y = ~chlorides, type = "box")%>%
+  layout(xaxis = list(title = "", titlefont = f),
+         yaxis = list(title = "Chlorides", titlefont = f),
+         title = "Box Plot for Chlorides")
+
+```
+
+After comparing both the box plots we can see that the max value of the 
+outliers has decreased from 0.346 to 0.16. If need arises to remove all the 
+outliers, we will consider that in bivariate and multivariate analysis. 
+
+After chlorides, we will analyze free sulfur dioxide present in the alcohol. 
+The free form of SO2 exists in equilibrium between molecular SO2 
+(as a dissolved gas) and bisulfite ion; it prevents microbial growth and the 
+oxidation of wine
+
+```{r echo=FALSE}
+## free.sulphur.dioxide
+plot_ly(x = wine_dataset$free.sulfur.dioxide, type = "histogram") %>%
+  layout(xaxis = list(title = "free sulphur dioxide", titlefont = f),
+         yaxis = list(title = "Frequency", titlefont = f),
+         title = "Histogram For free sulphur dioxide")
+```
+From the histogram, we can see that the data varies from 3 to 289 units. 
+Overall it has normal distribution. Since free sulfur dioxide has strong 
+correlations with other variables we take a look at the outliers. 
+```{r echo=FALSE}
+plot_ly(data = wine_dataset, y = ~free.sulfur.dioxide, type = "box")%>%
+  layout(xaxis = list(title = "", titlefont = f),
+         yaxis = list(title = "Free Sulphur Dioxide", titlefont = f),
+         title = "Box Plot for Free Sulphur Dioxide")
+
+```
+
+From the box plot it is pretty evident that there no outliers below 1st 
+quartile, and there is only point greater than 150, so here only the data 
+points below 99 percentile are considered for further analysis. 
+
+```{r echo=FALSE}
+wine_dataset <- subset(wine_dataset, wine_dataset$free.sulfur.dioxide < quantile(wine_dataset$free.sulfur.dioxide, c(.99)))
+
+#ggplot(aes(x=DF$fixed.acidity), data=DF)+
+#  geom_histogram(binwidth=0.01) 
+plot_ly(data = wine_dataset, y = ~free.sulfur.dioxide, type = "box") %>%
+  layout(xaxis = list(title = "", titlefont = f),
+         yaxis = list(title = "Free Sulphur Dioxide", titlefont = f),
+         title = "Box Plot for Free Sulphur Dioxide")
+```
+
+From the new box plot we can see that most of the outliers are removed. 
+If need arises, we would consider removing the remaining outliers in 
+bivariate or multivariate analysis. 
+
+We then proceed with the total sulfur dioxide variable which refers to 
+amount of free and bound forms of SO2; in low concentrations, SO2 is mostly 
+undetectable in wine, but at free SO2 concentrations over 50 ppm, SO2 becomes 
+evident in the nose and taste of wine
+
+```{r echo=FALSE}
+## total sulphur dioxide
+plot_ly(x = wine_dataset$total.sulfur.dioxide, type = "histogram") %>%
+  layout(xaxis = list(title = "total sulphur dioxide", titlefont = f),
+         yaxis = list(title = "Frequency", titlefont = f),
+         title = "Histogram For total sulphur dioxide")
+```
+
+The data is pretty much normally distributed varying from 17.5 ppm to 367.5 ppm. 
+It would be interesting to see how much total SO2 is present in high quality 
+wines. We would explore that in bivariate and multivariate analysis. 
+
+For looking at the outliers we will look at the box plot. 
+
+```{r echo=FALSE}
+plot_ly(data = wine_dataset, y = ~total.sulfur.dioxide, type = "box")%>%
+  layout(xaxis = list(title = "", titlefont = f),
+         yaxis = list(title = "Total Sulphur Dioxide", titlefont = f),
+         title = "Box Plot for Total Sulphur Dioxide")
+
+```
+
+We can see that there are very few outliers present. We will use Interquartile 
+range method to detect number of outliers. The number of upper and lower 
+outliers using IQR are - 
+
+```{r echo=FALSE}
+q1 = quantile(wine_dataset$total.sulfur.dioxide, na.rm=TRUE)[["25%"]]
+q3 = quantile(wine_dataset$total.sulfur.dioxide, na.rm=TRUE)[["75%"]]
+
+
+upper_outliers = wine_dataset$total.sulfur.dioxide[
+(wine_dataset$total.sulfur.dioxide > 
+   q3 + 1.5*IQR(wine_dataset$total.sulfur.dioxide, na.rm=TRUE)) & !is.na(wine_dataset$total.sulfur.dioxide)]
+lower_outliers = wine_dataset$total.sulfur.dioxide[
+  (wine_dataset$total.sulfur.dioxide <= 
+     q1 - 1.5*IQR(wine_dataset$total.sulfur.dioxide, na.rm=TRUE)) & !is.na(wine_dataset$total.sulfur.dioxide)]
+
+length(upper_outliers)
+length(lower_outliers)
+```
+
+Since the number of outliers are very small, we will remove all the outliers 
+here and plot a new box plot. 
+
+```{r echo=FALSE}
+wine_dataset <- subset(wine_dataset,wine_dataset$total.sulfur.dioxide < 
+min(upper_outliers) & wine_dataset$total.sulfur.dioxide > max(lower_outliers))
+
+#ggplot(aes(x=DF$fixed.acidity), data=DF)+
+#  geom_histogram(binwidth=0.01) 
+plot_ly(data = wine_dataset, y = ~total.sulfur.dioxide, type = "box")%>%
+  layout(xaxis = list(title = "", titlefont = f),
+         yaxis = list(title = "Total Sulphur Dioxide", titlefont = f),
+         title = "Box Plot for Total Sulphur Dioxide")
+```
+After outliers are removed, we move on to the another variable - density. 
+The density of wine is close to that of water depending on the percent alcohol 
+and sugar content
+
+```{r echo=FALSE}
+## density
+plot_ly(x = wine_dataset$density, type = "histogram") %>%
+  layout(xaxis = list(title = "density", titlefont = f),
+         yaxis = list(title = "Frequency", titlefont = f),
+         title = "Histogram For density")
+```
+
+The data varies from 0.98725 to 1.03875. We can say that density of all the 
+wines in our data set is pretty much close to the density of water which is 
+1 g/cm^3. We can see from the histogram that the data is normally distributed 
+with just few points not part of the normal distribution. We will examine the 
+outliers using boxplot. 
+
+```{r echo=FALSE}
+plot_ly(data = wine_dataset, y = ~density, type = "box")%>%
+  layout(xaxis = list(title = "", titlefont = f),
+         yaxis = list(title = "Density", titlefont = f),
+         title = "Box Plot for Density")
+
+```
+We see that we just have 3 outliers so we will remove them using InterQuartile 
+Range method. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+q1 = quantile(wine_dataset$density, na.rm=TRUE)[["25%"]]
+q3 = quantile(wine_dataset$density, na.rm=TRUE)[["75%"]]
+
+
+upper_outliers = wine_dataset$density[(wine_dataset$density >= 
+                        q3 + 1.5*IQR(wine_dataset$density, na.rm=TRUE)) & 
+                          !is.na(wine_dataset$density)]
+lower_outliers = wine_dataset$density[(wine_dataset$density <= 
+                        q1 - 1.5*IQR(wine_dataset$density, na.rm=TRUE)) & 
+                          !is.na(wine_dataset$density)]
+
+#wine_dataset <- subset(wine_dataset, wine_dataset$total.sulfur.dioxide < quantile(wine_dataset$total.sulfur.dioxide, c(.99)) & wine_dataset$chlorides > quantile(wine_dataset$chlorides, c(.01)))
+wine_dataset <- subset(wine_dataset,wine_dataset$density < min(upper_outliers) 
+                       & wine_dataset$density > max(lower_outliers))
+
+plot_ly(data = wine_dataset, y = ~density, type = "box")%>%
+  layout(xaxis = list(title = "", titlefont = f),
+         yaxis = list(title = "Density", titlefont = f),
+         title = "Box Plot for Density")
+```
+
+After looking at density, we will take a look at the column pH. It describes 
+how acidic or basic a wine is on a scale from 0 (very acidic) to 14 
+(very basic); most wines are between 3-4 on the pH scale
+
+```{r echo=FALSE}
+## pH
+plot_ly(x = wine_dataset$pH, type = "histogram") %>%
+  layout(xaxis = list(title = "pH", titlefont = f),
+         yaxis = list(title = "Frequency", titlefont = f),
+         title = "Histogram For pH")
+```
+We can see that the values for pH varies from 2.79 (highly acidic) to 3.81 
+(medium acidic). The distribution is quite normal. We will see if there are any 
+outliers present for pH. 
+
+```{r echo=FALSE}
+plot_ly(data = wine_dataset, y = ~pH, type = "box")%>%
+  layout(xaxis = list(title = "", titlefont = f),
+         yaxis = list(title = "pH", titlefont = f),
+         title = "Box Plot for pH")
+
+```
+
+We can see that there are outliers present for pH. We can find out the number 
+of outliers using IQR method. The number of upper and lower outliers is as 
+follows - 
+
+```{r echo=FALSE}
+q1 = quantile(wine_dataset$pH, na.rm=TRUE)[["25%"]]
+q3 = quantile(wine_dataset$pH, na.rm=TRUE)[["75%"]]
+
+
+upper_outliers = wine_dataset$pH[(wine_dataset$pH >= q3 + 
+              1.5*IQR(wine_dataset$pH, na.rm=TRUE)) & !is.na(wine_dataset$pH)]
+lower_outliers = wine_dataset$density[(wine_dataset$pH <= 
+                              q1 - 1.5*IQR(wine_dataset$pH, na.rm=TRUE)) & 
+                                !is.na(wine_dataset$pH)]
+length(upper_outliers)
+length(lower_outliers)
+```
+
+We can see from the SPLOM and the distribution that there only couple of points 
+that need to be removed. Hence we will again consider working with 2 percentile 
+to 98 percentile of the data. 
+
+```{r echo=FALSE}
+wine_dataset <- subset(wine_dataset, wine_dataset$pH < 
+                         quantile(wine_dataset$pH, 
+                        c(.99)) & wine_dataset$pH > 
+                         quantile(wine_dataset$pH, c(.01)))
+plot_ly(data = wine_dataset, y = ~pH, type = "box")%>%
+  layout(xaxis = list(title = "", titlefont = f),
+         yaxis = list(title = "pH", titlefont = f),
+         title = "Box Plot for pH")
+
+```
+
+We can see from the new box plot that most of the outliers are removed and 
+we will consider removing remaining outliers if needed in bivariate and 
+multivariate analysis. 
+
+Next, we will consider analyzing sulfates. Sulfates is a wine additive which 
+can contribute to sulfur dioxide gas (SO2) levels, which acts as an 
+antimicrobial and antioxidant. 
+
+```{r echo=FALSE}
+##sulphates
+plot_ly(x = wine_dataset$sulphates, type = "histogram") %>%
+  layout(xaxis = list(title = "sulphates", titlefont = f),
+         yaxis = list(title = "Frequency", titlefont = f),
+         title = "Histogram For sulphates")
+```
+
+From the histogram, we can see that histogram again is fairly normally 
+distributed and the data ranges from 0.23 to 1.08. Since sulfates do not 
+have any correlation with other variables, we would not look at the outliers. 
+
+```{r echo=FALSE}
+#plot_ly(data = wine_dataset, y = ~sulphates, type = "box")
+
+```
+
+At the end, we look at the very important chemical in wine which is alcohol. 
+We have percent alcohol content of the wine in the data which is distributed as 
+follows - 
+```{r echo=FALSE}
+##alcohol
+plot_ly(x = wine_dataset$alcohol, type = "histogram") %>%
+  layout(xaxis = list(title = "alcohol", titlefont = f),
+         yaxis = list(title = "Frequency", titlefont = f),
+         title = "Histogram For alcohol")
+```
+From the histogram, we can see that the alcohol is kind of a multimodal 
+distribution which varies from 8.4 to 14.2. Most of the wines have between 
+9 - 10 percent content of alcohol. It will be interesting to see whether 
+high quality wines have higher content of alcohol. 
+
+To see if there are any outliers, we will examine its box plot. 
+
+```{r echo=FALSE}
+plot_ly(data = wine_dataset, y = ~alcohol, type = "box")%>%
+  layout(xaxis = list(title = "", titlefont = f),
+         yaxis = list(title = "Alcohol", titlefont = f),
+         title = "Box Plot for Alcohol")
+
+```
+
+It is good to see that there are no outliers present for alcohol data. 
+
+
+# Univariate Analysis
+
+### What is the structure of your dataset?
+The data set before importing into R was in .csv format and represents 
+white wine data set with 4898 rows and 12 columns. Each row represents 
+the attributes that can affect the wine quality. It represents the data 
+which gives information on what proportion of each attribute would result 
+in the wine quality that would score from 3-9. 
+
+### What is/are the main feature(s) of interest in your dataset?
+In particular my interest is in finding out how wine quality is affected by 
+other different variables in the data set. In particular, based on our 
+correlation matrix it would be interesting to see how much the percent 
+content of alcohol, density of wine, pH, amount of nonvolatile acids, 
+residual sugar would affect the quality of the alcohol. 
+
+### What other features in the dataset do you think will help support your \
+investigation into your feature(s) of interest?
+The other features in the data set that will help support the features of 
+interest will be the amount of sulfur dioxide, chlorides/salt a well as 
+different combinations of the features listed above in analyzing the quality 
+of wine. 
+
+### Did you create any new variables from existing variables in the dataset?
+Yes, 3 new variables labeled factor_wine_quality, new.volatile.acidity and 
+new.residual.sugar are created from existing variables in the data set. 
+factor_wine_quality is the factor variable based on the existing variable 
+quality. new.volatile.acidity is the new transformed data for existing variable 
+volatile.acidity, new.residual.sugar is the new transformed data for existing 
+variable residual.sugar. 
+
+### Of the features you investigated, were there any unusual distributions? \
+Did you perform any operations on the data to tidy, adjust, or change the form\ 
+of the data? If so, why did you do this?
+Yes, volatile acidity and residual sugar were right skewed distributions. 
+To change the form of data, sqrt transformation and logarithmic transformation 
+was performed and new columns were created to represent the transformed data. 
+The reason to do transformation was to achieve normality prior to the use of 
+the linear regression model. 
+
+# Bivariate Plots Section
+
+We begin the bivariate analysis by looking at the correlation matrix of the 
+existing columns as well as new transformed columns added in the data set. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library("corrplot")
+#new_wine_dataset <- wine_dataset[,!"factor_wine_quality"]
+new_wine_dataset <- within (wine_dataset,rm(factor_wine_quality, 
+                                        volatile.acidity, residual.sugar))
+#round(cor(new_wine_dataset),2)
+#new_column_names <- wine
+ORIGINAL <- colnames(new_wine_dataset)
+corrplot.mixed(cor(new_wine_dataset[, ORIGINAL]))
+
+```
+
+From the correlation matrix it can be seen that the alcohol has the highest 
+correlation with the quality of 0.44 in terms of relationship between all the 
+independent variables and the dependent variable quality. Alcohol has also has 
+the largest negative correlation with density ( - 0.81) and density has the 
+second highest correlation with the quality with correlation of -0.31 which 
+is bit obvious since it is negatively correlated with alcohol. Density is also 
+strongly correlated with residual sugar with correlation 0.78 and we can also 
+see some medium correlation between total.sulfur.dioxide and alcohol (-0.46) 
+and total.sulfur.dioxide and residual.sugar(0.43) and total.sulfur.dioxide and 
+density(0.55) as well as chlorides and alcohol (-0.42). There are also some 
+weak correlations such as fixed.acidity and pH (-0.38), free.sulfur.dioxide and 
+residual.sugar(0.36). There is also a very obvious relationship between 
+free.sulfur.dioxide and total.sulfur.dioxide with correlation of 0.61. 
+
+Let us begin investigating first the relationship of all the variables with 
+quality. 
+
+First we begin with investigating the relationship between fixed acidity and 
+quality. We know from the correlation matrix, that there is no correlation 
+between two variables (0.08). We will try to visualize the distribution of 
+fixed acidity for different quality of wines using scatter plot. 
+
+```{r echo=FALSE}
+library(scatterD3)
+scatterD3(data = wine_dataset, x = fixed.acidity, y = quality, 
+          xlab = "Fixed acidity", ylab = "Quality", point_opacity = 0.5, 
+          caption = list(title = "Scatter Plot of Fixed acidity and Quality"))
+#library(pairsD3)
+#pairs(~fixed.acidity+volatile.acidity+citric.acid+residual.sugar,
+#data=wine_dataset, 
+ #  main="Simple Scatterplot Matrix")
+#pairsD3(wine_dataset[,c("fixed.acidity", "volatile.acidity",
+#"citric.acid", "quality")])
+```
+
+From the scatter plots we do not see much difference in the fixed acidity 
+proportion based on the quality of the wine.  
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, cache=FALSE}
+p <- ggplot(aes(x=fixed.acidity), data=wine_dataset) + 
+  geom_freqpoly(aes(color=factor_wine_quality))
+ggplotly(p)
+```
+
+From the above frequency polygon we can see that the maximum count of fixed 
+acidity for all the wine qualities occur approximately at 6.758 g/dm^3. Overall 
+the lowest value of fixed acidity is approximately 5 g/dm^3 for all the wines 
+and the highest values is approximately 9.20 g/dm^3
+
+
+```{r echo=FALSE, warning=FALSE, message= FALSE}
+plot_ly(wine_dataset, y = ~fixed.acidity, color = ~factor_wine_quality, 
+        type = "box")%>%
+       layout(xaxis = list(title = "Quality", titlefont = f),
+              yaxis = list(title = "Fixed Acidity", titlefont = f),
+              title = "Box Plot for Fixed Acidity")
+```
+
+Compared to scatter plot and frequency polygon. box plot gives better 
+visualization of fixed acidity distribution based on wine quality. 
+The median of all the wine qualities is same i.e. 6.8 g/dm^3. 
+The range of values for Low quality and medium quality wines lie between 
+5.1 and 8.5 whereas for high quality wine the range of values is 5.1 - 8.5. 
+The highest value of fixed acidity is 9.1 found in both high quality as well as 
+low quality wines. High quality wine has more outliers compared to medium and 
+low quality wines. 
+
+Next we move on analyzing volatile.acidity and the quality of wines. 
+
+```{r echo = FALSE}
+library(scatterD3)
+scatterD3(data = wine_dataset, x = new.volatile.acidity, y = quality,xlab = 
+            "Volatile acidity", ylab = "Quality", point_opacity = 0.5, 
+      caption = list(title = "Scatter Plot of Volatile acidity and Quality"))
+```
+
+The scatter plot does not reveal much information about the relationship 
+between volatile acidity and quality. We can just see that for wine with 
+quality score 4 or low quality wine has the highest volatile acidity value. 
+
+```{r echo = FALSE, warning=FALSE, message=FALSE}
+p <- ggplot(aes(x=new.volatile.acidity), data=wine_dataset) + 
+  geom_freqpoly(aes(color=factor_wine_quality))
+ggplotly(p)
+```
+
+Next, we look at the frequency polygon, where we can see that maximum count of 
+volatile acidity for low and medium wine qualities is approximately same. 
+Whereas the maximum count of volatile acidity for high quality wines is less 
+compared to other two wine qualities. Since we are analyzing with transformed 
+data here, we do not have actual values. Overall, we can say that the volatile 
+acidity is lower in wines with high quality or score greater than or equal to 7 
+which should be obvious because too high of levels can lead to an unpleasant, 
+vinegar taste. 
+
+```{r echo=FALSE, warning=FALSE, message= FALSE}
+plot_ly(wine_dataset, y = ~new.volatile.acidity, color = ~factor_wine_quality, 
+        type = "box")%>%
+       layout(xaxis = list(title = "Quality", titlefont = f),
+              yaxis = list(title = "Volatile Acidity", titlefont = f),
+              title = "Box Plot for Volatile Acidity")
+
+```
+
+We can see from the above box plots that the Low quality wines have high 
+median value compared to Medium and High Quality wines. Surprisingly, there are 
+also some values or outliers in high quality wines which are larger than values 
+in medium quality wines and the overall range of high quality wines is larger 
+than the medium quality wines.
+
+Next, we move on to analyze the citric acid.
+
+```{r echo=FALSE, message=FALSE}
+scatterD3(data = wine_dataset, x = citric.acid , y = quality, 
+          xlab = "Citric Acid", ylab = "Quality", point_opacity = 0.5, 
+          caption = list(title = "Scatter Plot of Citric Acid and Quality"))
+```
+Most of the wines have less or almost zero amount of citric acid. There is an 
+outlier in the medium quality wine which has the highest value of 1.660 units. 
+
+```{r echo = FALSE, warning=FALSE, message=FALSE}
+p <- ggplot(aes(x=citric.acid), data=wine_dataset) + 
+  geom_freqpoly(aes(color=factor_wine_quality))
+ggplotly(p)
+```
+
+From the above frequency polygon, we can see that the maximum count of citric 
+acid values in all the wines is approximately equal to 0.29 units. Overall 
+there is no indication of the relationship that can be figured out here. 
+
+```{r echo=FALSE, warning=FALSE, message= FALSE}
+plot_ly(wine_dataset, y = ~citric.acid, color = ~factor_wine_quality, 
+        type = "box")%>%
+       layout(xaxis = list(title = "Quality", titlefont = f),
+              yaxis = list(title = "Citric Acid", titlefont = f),
+              title = "Box Plot for Citric Acid")
+
+```
+
+We can see that the range of values for citric acid is low for High quality 
+wines and the highest for Low Quality wines. The highest amount of citric acid 
+can be seen in Low quality and Medium Quality Wines. The median value is 
+approximately same for all the wines i.e. 0.31 units. Overall it seems that 
+there is a balance of citric acid in high quality and medium quality wines. 
+
+One of the important factors which I think is important in wine quality is 
+residual sugar. 
+
+```{r echo=FALSE, message=FALSE}
+scatterD3(data = wine_dataset, x = new.residual.sugar, y = quality, 
+          xlab = "Residual Sugar", ylab = "Quality", point_opacity = 0.5,
+          caption = list(title = "Scatter Plot of Residual Sugar and Quality"))
+```
+
+We can safely say from the scatter plot that medium quality wines and low 
+quality wines have more residual sugar compared to high quality wines. Since it 
+is transformed value there are negative records present in the chart. 
+
+```{r echo = FALSE, warning=FALSE, message=FALSE}
+p <- ggplot(aes(x=new.residual.sugar), data=wine_dataset) + 
+  geom_freqpoly(aes(color=factor_wine_quality))
+ggplotly(p)
+```
+
+Again, all the wines in the data set have approximately the same maximum of 
+residual sugar. We can see that it is a bimodal distribution. 
+
+```{r echo=FALSE, warning=FALSE, message= FALSE}
+plot_ly(wine_dataset, y = ~new.residual.sugar, color = ~factor_wine_quality, 
+        type = "box")%>%
+       layout(xaxis = list(title = "Quality", titlefont = f),
+              yaxis = list(title = "Residual Sugar", titlefont = f),
+              title = "Box Plot for Residual Sugar")
+
+```
+From the boxplot, we can see that median value for High quality and medium 
+quality sugar are smaller compared to low quality sugar. The range of the values 
+for High quality and medium quality wines is also smaller than the low quality 
+wines. It can be safely assumed that in our data set that High quality wines 
+have low amount of residual sugar. 
+
+Next we will analyze how the amount of chlorides or salt help determine the 
+quality of wine. 
+
+```{r echo=FALSE, message=FALSE}
+scatterD3(data = wine_dataset, x = chlorides, y = quality, xlab = "Chlorides", 
+          ylab = "Quality", point_opacity = 0.5, 
+          caption = list(title = "Scatter Plot of Chlorides and Quality"))
+```
+
+We do see that the high quality wines have less chlorides than the medium 
+and low quality wines. 
+
+```{r echo = FALSE, warning=FALSE, message=FALSE}
+p <- ggplot(aes(x=chlorides), data=wine_dataset) + 
+  geom_freqpoly(aes(color=factor_wine_quality))
+ggplotly(p)
+```
+
+The frequency polygon is interesting here. The highest count of chlorides is 
+found at the value approximately equal to 0.038 for high and medium quality 
+wines. For low quality wines the most common value of chlorides is 0.048. 
+
+```{r echo=FALSE, warning=FALSE, message= FALSE}
+plot_ly(wine_dataset, y = ~chlorides, color = ~factor_wine_quality, 
+        type = "box")%>%
+       layout(xaxis = list(title = "Quality", titlefont = f),
+              yaxis = list(title = "Chlorides", titlefont = f),
+              title = "Box Plot for Chlorides")
+```
+
+The box plots here provide a pretty good idea about the chlorides proportion 
+in the wines. We can see that median is smaller for medium and high quality 
+wines. Overall the range of chlorides in high quality wines is smaller than 
+the range in medium and low quality wines. 
+
+Next we look at how free sulfur dioxide varies for wine qualities. 
+
+```{r echo=FALSE, message=FALSE}
+scatterD3(data = wine_dataset, x = free.sulfur.dioxide, y = quality,
+          xlab = "Free Sulphur Dioxide", ylab = "Quality", point_opacity = 0.5, 
+  caption = list(title = "Scatter Plot of Free Sulphur Dioxide and Quality"))
+```
+
+The relationship is vague in scatter plot between free sulfur dioxide and 
+quality. The highest value of sulfur dioxide is found for medium quality 
+wine and the lowest value is found for low quality wines. 
+
+```{r echo = FALSE, warning=FALSE, message=FALSE}
+p <- ggplot(aes(x=free.sulfur.dioxide), data=wine_dataset) + 
+  geom_freqpoly(aes(color=factor_wine_quality))
+ggplotly(p)
+```
+
+The most common value of sulfur dioxide in the medium quality wines is 
+approximately 32 and for low and high quality wines is around 34.9 units. 
+
+```{r echo=FALSE, warning=FALSE, message= FALSE}
+plot_ly(wine_dataset, y = ~free.sulfur.dioxide, color = ~factor_wine_quality, 
+        type = "box")%>%
+       layout(xaxis = list(title = "Quality", titlefont = f),
+              yaxis = list(title = "free.sulfur.dioxide", titlefont = f),
+              title = "Box Plot for free.sulfur.dioxide")
+
+```
+The median values are approximately same for all the wines. The range of free 
+sulfur dioxide is smaller compared to medium and low quality wines. 
+
+Not much to conclude we move on to total sulfur dioxide. 
+
+```{r echo=FALSE, message=FALSE}
+scatterD3(data = wine_dataset, x = total.sulfur.dioxide, y = quality, 
+          xlab = "Total Sulphur Dioxide", ylab = "Quality", 
+          point_opacity = 0.5, caption = list(title = "Scatter Plot of 
+                            Total Sulphur Dioxide and Quality"))
+```
+
+It can be seen that amount of total sulfur dioxide is smaller in high quality 
+wines than the low and medium quality wines. 
+
+```{r echo = FALSE, warning=FALSE, message=FALSE}
+p <- ggplot(aes(x=total.sulfur.dioxide), data=wine_dataset) + 
+  geom_freqpoly(aes(color=factor_wine_quality))
+ggplotly(p)
+```
+
+The common values for different qualities of wines differ here. Most common 
+value for medium quality wines is at 110.55 ppm, for high quality wines 
+the most common value is approximately equal to 126.35 ppm and for low quality 
+wines the most common value is 134.25 ppm. 
+
+```{r echo=FALSE, warning=FALSE, message= FALSE}
+plot_ly(wine_dataset, y = ~total.sulfur.dioxide, color = ~factor_wine_quality, 
+        type = "box")%>%
+       layout(xaxis = list(title = "Quality", titlefont = f),
+              yaxis = list(title = "total sulfur dioxide", titlefont = f),
+              title = "Box Plot for total sulfuric acid")
+
+```
+
+We can say that the median and range are smaller for high quality wines 
+compared to Low quality and medium quality wines. 
+
+We will next see how much variance in density affects the quality of the wines. 
+
+```{r echo=FALSE, message=FALSE}
+scatterD3(data = wine_dataset, x = density, y = quality, xlab = "Density", 
+          ylab = "Quality", point_opacity = 0.5, caption = 
+            list(title = "Scatter Plot of Density and Quality"))
+```
+
+From the above scatter plot we can see that high quality wines have lower 
+density compared to medium and low quality wines. The highest density is 
+found in low quality wines. 
+
+```{r echo = FALSE, warning=FALSE, message=FALSE}
+p <- ggplot(aes(x=density), data=wine_dataset) + 
+  geom_freqpoly(aes(color=factor_wine_quality))
+ggplotly(p)
+```
+
+We can see that the most common value of density for all the wine qualities 
+lies approximately between 0.991 to 0.995 which is pretty much same as that of 
+water(1 g/cm^3).  
+
+```{r echo=FALSE, warning=FALSE, message= FALSE}
+plot_ly(wine_dataset, y = ~density, color = ~factor_wine_quality, 
+        type = "box")%>%
+       layout(xaxis = list(title = "density", titlefont = f),
+              yaxis = list(title = "density", titlefont = f),
+              title = "Box Plot for density")
+
+```
+
+With box plot, we can see clear distinction between densities for each wine 
+quality. High quality wines have smaller range and median value compared to 
+medium and low quality wines. The highest value of density for high quality 
+wine is 1.0006 g/cm^3 whereas it is 1.0024 g/cm^3 for low quality wine and 
+1.0017 for medium quality wines. The lowest value of density can also be found 
+in high quality wines which is 0.9871 g/cm^3. 
+
+Having found stronger variance in density with respect to the quality we move 
+on to the pH. 
+
+```{r echo=FALSE, message=FALSE}
+scatterD3(data = wine_dataset, x = pH, y = quality, xlab = "pH", 
+          ylab = "Quality", point_opacity = 0.5, caption = 
+            list(title = "Scatter Plot of pH and Quality"))
+```
+
+We do not see much relation between pH and wine qualities from scatter plot 
+here. 
+
+```{r echo = FALSE, warning=FALSE, message=FALSE}
+p <- ggplot(aes(x=pH), data=wine_dataset) + 
+  geom_freqpoly(aes(color=factor_wine_quality))
+ggplotly(p)
+```
+
+The most common values of pH for medium and low quality wines are approximately 
+equal to 3.19 and most common value of pH for high quality wines is 3.26 which 
+means high quality wines can be slightly more basic than the medium and low 
+quality wines. 
+
+```{r echo=FALSE, warning=FALSE, message= FALSE}
+plot_ly(wine_dataset, y = ~pH, color = ~factor_wine_quality, type = "box")%>%
+       layout(xaxis = list(title = "pH", titlefont = f),
+              yaxis = list(title = "pH", titlefont = f),
+              title = "Box Plot for pH")
+
+```
+
+The median for High quality wines is higher than low and medium quality wines 
+which is in sync with our conclusion previously that high quality wines are 
+slightly more basic than the low and medium wines. The range is pretty much 
+same for medium and high quality wines, it is however smaller for low quality 
+wines. 
+
+```{r echo=FALSE, message=FALSE}
+scatterD3(data = wine_dataset, x = sulphates, y = quality, xlab = "Sulphates", 
+          ylab = "Quality", point_opacity = 0.5, caption = 
+            list(title = "Scatter Plot of Sulphates and Quality"))
+```
+From the scatter plot we cannot see much relationship between sulfates and the 
+wine quality. Overall, we can say that the the highest value of sulfates is 
+found in high quality wines and the lowest value of sulfates can be seen in 
+medium quality wine. 
+
+```{r echo = FALSE, warning=FALSE, message=FALSE}
+p <- ggplot(aes(x=sulphates), data=wine_dataset) + 
+  geom_freqpoly(aes(color=factor_wine_quality))
+ggplotly(p)
+```
+The most common value of sulfates in low quality wine is 0.47 units 
+approximately. 
+The common value of sulfates in medium quality wines is 0.50 approximately and 
+the common value of sulfates in the high quality wines is 0.38 units.
+
+```{r echo=FALSE, warning=FALSE, message= FALSE}
+plot_ly(wine_dataset, y = ~sulphates, color = ~factor_wine_quality, 
+        type = "box")%>%
+       layout(xaxis = list(title = "sulphates", titlefont = f),
+              yaxis = list(title = "sulphates", titlefont = f),
+              title = "Box Plot for sulphates")
+
+```
+We can see that the range of sulfates is higher in high quality wines and 
+lowest in low quality wines. The median is approximately same. 
+
+Next we look at the most ingredient chemical in wine which is alcohol
+```{r echo = FALSE, warning=FALSE, message=FALSE}
+p <- ggplot(aes(x=alcohol), data=wine_dataset) + 
+  geom_freqpoly(aes(color=factor_wine_quality))
+ggplotly(p)
+
+```
+
+The most common value of alcohol found in low quality wines is 9.4 units. 
+The most common percentage content of alcohol in medium quality wine is 10.4 
+and for the high quality wine the most common percentage content of alcohol is 
+11. 
+
+```{r echo=FALSE}
+scatterD3(data = wine_dataset, x = alcohol, y = quality,xlab = "Alcohol", 
+          ylab = "Quality", point_opacity = 0.5, caption = list
+(title = "Scatter Plot of Alcohol and Quality"))
+```
+We can see from the scatter plot that high quality wines have little higher 
+amount of alcohol compared to the low and medium quality wines. Interestingly 
+one of the high quality wine also has one of the lowest value of the alcohol. 
+We will analyze it further using box plot. 
+
+```{r echo=FALSE, warning=FALSE, message= FALSE}
+plot_ly(wine_dataset, y = ~alcohol, color = ~factor_wine_quality, 
+        type = "box")%>%
+       layout(xaxis = list(title = "Quality", titlefont = f),
+              yaxis = list(title = "alcohol", titlefont = f),
+              title = "Box Plot for alcohol")
+
+```
+
+It can be clearly seen that the median value for alcohol in High quality is 
+greater than medium and low quality alcohol, Overall the range is also very 
+high for high quality alcohol compared with low and medium quality alcohol. 
+The lowest value of the alcohol in a wine is 8.4 units in Low quality wine and 
+the lowest value of the alcohol in medium and high quality is 8.5. The highest 
+value of alcohol content in high quality wine is 14.2 units. 
+
+
+We would also like to analyze the relationships between some of the pretty 
+strong correlations we observe in other variables. We will first start with 
+density and alcohol. They have pretty strong negative correlation of -0.81. 
+
+```{r echo=FALSE, message=FALSE}
+scatterD3(data = wine_dataset, x = density, y = alcohol, xlab = "density", 
+          ylab = "Alcohol", point_opacity = 0.5, caption = list
+          (title = "Scatter Plot of density and Alcohol"))
+```
+```{r echo=FALSE}
+with(wine_dataset, cor.test(density, alcohol))
+```
+We can see that the p-value is less than 0.05, so at 95% confidence interval 
+we can say that density and alcohol are significantly correlated with 
+correlation coefficient of -0.81. We can see that from above plots that for 
+high quality wines density was low but alcohol content was higher. 
+
+Next we take a look at the density and residual sugar. 
+```{r echo=FALSE, message=FALSE}
+scatterD3(data = wine_dataset, x = density, y = new.residual.sugar, xlab = 
+            "density", ylab = "Residual Sugar", point_opacity = 0.5, 
+          caption = list(title = "Scatter Plot of density and Residual Sugar"))
+```
+
+From the scatter plot we can see positive correlation. 
+
+```{r echo=FALSE}
+with(wine_dataset, cor.test(density, new.residual.sugar))
+```
+
+We can see that the p-value is less than 0.05, so at 95% confidence interval 
+we can say that density and residual sugar are significantly correlated with 
+correlation coefficient of 0.78. This makes sense since we found out from the 
+plots above that the density and residual sugars content were low for high 
+quality wines. 
+
+Next we look at the very obvious correlation between free sulfur dioxide and 
+total sulfur dioxide. 
+
+```{r echo=FALSE, message=FALSE}
+scatterD3(data = wine_dataset, x = total.sulfur.dioxide, 
+          y = free.sulfur.dioxide, 
+          xlab = "total sulphur dioxide", ylab = "free sulphur dioxide", 
+          point_opacity = 0.5, caption = list(title = "Scatter Plot of free 
+                                              and total sulphur dioxide"))
+```
+As expected we see a positive correlation between these two variables. 
+
+```{r echo=FALSE}
+with(wine_dataset, cor.test(free.sulfur.dioxide, total.sulfur.dioxide))
+```
+We can see that the p-value is less than 0.05, so at 95% confidence interval 
+we can say that total and free sulfur dioxide are significantly correlated 
+with correlation coefficient of 0.61. 
+
+At the end of bivariate analysis we will take a look at the relation between 
+total sulfur dioxide and density. 
+
+```{r echo=FALSE, message=FALSE}
+scatterD3(data = wine_dataset, x = total.sulfur.dioxide, y = density, 
+          xlab = "total sulphur dioxide", ylab = "density", point_opacity = 
+            0.5, caption = list(title = "Scatter Plot of density and total 
+                                sulphur dioxide"))
+```
+As we have seen from the correlation matrix, we see a positive correlation. 
+
+```{r echo=FALSE}
+with(wine_dataset, cor.test(density, total.sulfur.dioxide))
+```
+
+We can see that the p-value is less than 0.05, so at 95% confidence interval we
+can say that density and total sulfur dioxide are significantly correlated 
+with correlation coefficient of 0.55.
+
+### Talk about some of the relationships you observed in this part of the \
+investigation. How did the feature(s) of interest vary with other features in \
+the data set?
+There are many relationships which we observed as a part of bivariate analysis. 
+Most of them involved relationship of independent variables such as alcohol, 
+density, chlorides etc. with dependent variable quality and also with factor 
+variable which has three classes of quality
+
+### Did you observe any interesting relationships between the other features \
+(not the main feature(s) of interest)?
+Yes, we also analyzed the relationship between the independent variables such 
+as total sulfur dioxide and density, density and residual sugar, density and 
+alcohol. Basically we analyzed the relationships between the variables which 
+were strongly correlated. 
+
+### What was the strongest relationship you found?
+The strongest relationship was found between alcohol and density. We can say 
+that as the percent of alcohol content increases the density decreases. 
+
+# Multivariate Plots Section
+
+
+In bivariate analysis, we found out that density and alcohol were related to 
+quality of alcohol compared to other variables, so first we begin with 
+investigating the relationship between alcohol, density and quality over here. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+p<-ggplot(aes(y=alcohol, x=density), data = wine_dataset) +
+ 
+   geom_point(aes(color=factor_wine_quality, group=factor_wine_quality, 
+                  alpha = .05), size = 1.0) +
+  
+  ggtitle("Alcohol versus Density")
+ggplotly(p)
+```
+From the above plot we can see that we are affirming our bivariate analysis 
+conclusion that wines with high quality have higher percentage content of 
+alcohol and lower density values. 
+
+We were aware about this relationship from bivariate analysis. We will try to 
+see what other variables which have pretty good correlation either with alcohol 
+or density affect the quality. 
+
+We will begin with analyzing alcohol and pH. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+p <-ggplot(aes(y = alcohol, x = pH), data = wine_dataset) + 
+    geom_point(aes(color = factor_wine_quality, group = factor_wine_quality, 
+                   alpha = 0.05), size = 1.0) +
+    ggtitle("Alcohol versus pH")
+ggplotly(p)
+```
+
+We do not see any relationship as such between alcohol and pH with 
+respect to the quality. The High quality wines with high alcohol content can 
+have the same pH as high or low quality wine with less alcohol content.
+
+Next we check Alcohol and chlorides. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+p <-ggplot(aes(y = alcohol, x = chlorides), data = wine_dataset) + 
+    geom_point(aes(color = factor_wine_quality, group = factor_wine_quality, 
+                   alpha = 0.05), size = 1.0) +
+    ggtitle("Alcohol versus chlorides")
+ggplotly(p)
+```
+We can see that amount of chlorides is pretty higher among wines with less 
+alcohol content. Most of the high quality and medium quality wines with alcohol 
+content greater than 10 have chloride content less than 0.08 units. Low quality 
+and medium quality wines that have percent alcohol content around 9 have higher 
+amount of chlorides. Of course there is an exception of one medium quality wine 
+which has 13.4 percent of alcohol has high chloride content as well. 
+
+Then we analyze density and total sulfur dioxide
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+p <-ggplot(aes(y = density, x = total.sulfur.dioxide), data = wine_dataset) + 
+    geom_point(aes(color = factor_wine_quality, group = factor_wine_quality, 
+                   alpha = 0.05), size = 0.5) +
+    ggtitle("density versus total sulfur dioxide")
+ggplotly(p)
+```
+We can see that most of the high quality wines have low density as well as 
+low total sulfur dioxide. 
+
+Next, we move on to density and residual sugar. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+p <-ggplot(aes(y = residual.sugar, x = density), data = wine_dataset) + 
+    geom_point(aes(color = factor_wine_quality, group = factor_wine_quality, 
+                   alpha = 0.05), size = 1.0) +
+    ggtitle("Density versus Residual Sugar")
+ggplotly(p)
+```
+
+This graph is quite interesting, We know that we have one of the highest 
+correlation between density and residual sugar but there exists a pattern 
+for quality of wines as well. we can see most of the high quality wines have 
+smaller density values as well as small residual sugar values. Low quality 
+wines have higher density as well as high residual sugar values.
+
+We will also take a look at alcohol and residual sugar. 
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+p <-ggplot(aes(y = residual.sugar, x = alcohol), data = wine_dataset) + 
+    geom_point(aes(color = factor_wine_quality, group = factor_wine_quality, 
+                   alpha = 0.05), size = 1.0) +
+    ggtitle("Alcohol versus Residual Sugar")
+ggplotly(p)
+```
+
+It is interesting to see that medium and low quality wines have more or less 
+the same amount of residual sugar. There are some High quality wines with less 
+alcohol content that have high residual sugar. 
+
+Now lets take a look at residual sugar and pH. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+p <-ggplot(aes(y = residual.sugar, x = pH), data = wine_dataset) + 
+    geom_point(aes(color = factor_wine_quality, group = factor_wine_quality, 
+                   alpha = 0.05), size = 1.0) +
+    ggtitle("pH versus Residual Sugar")
+ggplotly(p)
+```
+It is interesting to see that there is no trend between ph and residual sugar. 
+Generally wines with lower pH or wines which are highly acidic have higher 
+amount of residual sugar in order to reduce the bitterness of the acid. 
+
+We will also take a look at volatile acidity and alcohol. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+p <-ggplot(aes(y = volatile.acidity, x = alcohol), data = wine_dataset) + 
+    geom_point(aes(color = factor_wine_quality, group = factor_wine_quality, 
+                   alpha = 0.05), size = 1.0) +
+    ggtitle("Volatile acidity versus alcohol")
+ggplotly(p)
+```
+We are not seeing much relationship here. It seems that the values of volatile 
+acidity are same for all the wines irrespective of their alcohol content as 
+well as their quality
+
+We will also explore density and free sulfur dioxide.
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+p <-ggplot(aes(y = density, x = free.sulfur.dioxide), data = wine_dataset) + 
+    geom_point(aes(color = factor_wine_quality, group = factor_wine_quality, 
+                   alpha = 0.05), size = 1.0) +
+    ggtitle("Density versus Free Sulphur Dioxide")
+ggplotly(p)
+```
+We can say that amount of sulfur dioxide in the wines does not depend on 
+density neither it is varying in any way based on the quality of the wine.
+
+Then next alcohol and citric acid are analyzed
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+p <-ggplot(aes(y = citric.acid, x = alcohol), data = wine_dataset) + 
+    geom_point(aes(color = factor_wine_quality, group = factor_wine_quality, 
+                   alpha = 0.05), size = 1.0) +
+    ggtitle("Citric Acid versus alcohol")
+ggplotly(p)
+```
+We cannot see much trend here between citric acid and alcohol.  
+
+Next, we move on to sulfates and density.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+p <-ggplot(aes(y = sulphates, x = density), data = wine_dataset) + 
+    geom_point(aes(color = factor_wine_quality, group = factor_wine_quality, 
+                   alpha = 0.05), size = 1.0) +
+    ggtitle("Sulphates versus Density")
+ggplotly(p)
+```
+
+We can say that the sulfates value might slightly be lower for low quality 
+wines and wines with higher density. Some of the higher values of sulfates 
+can be observed for high quality wines with smaller values of density. 
+
+We will develop a linear regression model to statistically understand which 
+variables are statistically significant to determine the quality of wine. 
+In linear regression model we will use all the columns except for quality 
+as independent variables and quality will be a dependent variable. 
+We will consider all the columns first, and then we will remove the 
+statistically insignificant variables (variables whose p_value > 0.05) one by 
+one.  
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+fit <- lm(quality ~  fixed.acidity+ volatile.acidity+citric.acid+residual.sugar+chlorides+free.sulfur.dioxide+
+        total.sulfur.dioxide+density+pH+sulphates+alcohol, data=wine_dataset)
+
+summary(fit)
+```
+We can see that this model has R^2 = 0.2796. We can also see that following 
+variables are not statistically significant - citric acid, chlorides, 
+total sulfur dioxide. We will remove total sulfur dioxide first as it has 
+the highest p-values and develop linear regression model again. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+fit <- lm(quality ~  fixed.acidity+ volatile.acidity+citric.acid+residual.sugar+chlorides+free.sulfur.dioxide+
+      density+pH+sulphates+alcohol, data=wine_dataset)
+
+summary(fit)
+```
+We can see that the R^2 is still the same and we have two variables whose 
+p-values are > 0.05. We will eliminate citric acid as it has the highest 
+p-value. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+fit <- lm(quality ~  fixed.acidity+ volatile.acidity+residual.sugar+chlorides+
+            free.sulfur.dioxide+
+      total.sulfur.dioxide+density+pH+sulphates+alcohol, data=wine_dataset)
+
+summary(fit)
+```
+
+We can see that this model has R^2 = 0.2796. We can also see that chlorides 
+has p-value greater than 0.05 so we will remove it and develop linear 
+regression model again. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+fit <- lm(quality ~  fixed.acidity+ volatile.acidity+residual.sugar+free.sulfur.dioxide+total.sulfur.dioxide+
+            density+pH+sulphates+alcohol, data=wine_dataset)
+
+summary(fit)
+```
+
+We can see that we have all the statistically significant variables in the 
+model. R^2 has pretty low value of 0.2793 which means only 27.93% of variation 
+in quality can be explained by the independent variables. 
+
+### Talk about some of the relationships you observed in this part of the \
+investigation. Were there features that strengthened each other in terms of \
+looking at your feature(s) of interest?
+Some of the relationships which were explained in the investigation were 
+relationship of sulfates with density and quality, relationship of volatile 
+acidity with alcohol and quality, relationship of residual sugar with density 
+and quality. The relationship of residual sugar and density strengthened the 
+fact that low quality white wines have more residual sugar and more density. 
+
+### Were there any interesting or surprising interactions between features?
+While analyzing the relationship it was interesting to find that the residual 
+sugar did not had any clear trend with the pH. Generally for higher acidic 
+wines, more residual sugar is present to reduce the bitterness of the acid, 
+however we did not see that trend in the data. 
+
+### OPTIONAL: Did you create any models with your dataset? Discuss the \
+strengths and limitations of your model.
+Yes, I did create linear regression model with the data set. The strength of 
+the model is that helped me to identify the variables which were statistically 
+significant to quality, however the R^2 was only 0.2793 which meant only 27.93% 
+of the variation in quality could be explained by the independent variables. 
+
+
+# Final Plots and Summary
+
+### Plot One
+```{r echo=FALSE, warning=FALSE, message= FALSE}
+plot_ly(wine_dataset, y = ~alcohol, color = ~factor_wine_quality, type = 
+          "box")%>%
+       layout(xaxis = list(title = "Quality", titlefont = f),
+              yaxis = list(title = "alcohol(%)", titlefont = f),
+              title = "Box Plot for alcohol")
+
+```
+
+### Description One
+This box plot shows the distribution characteristics of alcohol with respect 
+to the quality of wines. The reason to chose this plot because based on the 
+correlation matrix we know that alcohol has the highest correlation with 
+quality compared to other variables. From this box plot, we can see the 
+median of high quality wines is higher than medium and low quality wines. 
+The upper and lower quartile values of the high quality wines are larger 
+than the medium and the Low quality wines. The boxplot for low quality wines 
+show that many wines have similar alcohol content at certain parts of the scale 
+but in other parts of the scale, the alcohol content varies. From the box plots 
+We can say that high quality wines usually have higher percent content of 
+alcohol. 
+
+
+### Plot Two
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+p<-ggplot(aes(y=alcohol, x=density), data = wine_dataset) +
+  xlab("Alcohol(%)") + ylab("Density(g/cm^3)") +
+ 
+   geom_point(aes(color=factor_wine_quality, group=factor_wine_quality, 
+                  alpha = .05), size = 1.0) +
+  
+  ggtitle("Alcohol versus Density")
+ggplotly(p)
+```
+
+### Description Two
+This plot shows that the high alcohol content wines have lower density, and 
+have high quality. Moreover at lower alcohol content, the density is higher, 
+and wine quality is lower, but also the variation in density is higher. 
+The reason that this graph is chosen because density and alcohol have some 
+of the highest correlation with the quality of the wine. 
+
+### Plot Three
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+p <-ggplot(aes(y = residual.sugar, x = density), data = wine_dataset) + 
+  xlab("Density(g/cm^3)")+ ylab("Residual Sugar(gram/liter)") + 
+    geom_point(aes(color = factor_wine_quality, group = factor_wine_quality, 
+                   alpha = 0.05), size = 1.0) +
+    ggtitle("Density versus Residual Sugar")
+ggplotly(p)
+```
+### Description Three
+This graph shows that high quality wines have lower density and residual sugar. 
+The low quality wines have higher density and residual sugar content. 
+The reason to chose this plot because from the linear regression model 
+we know that residual sugar, density are statistically significant variables 
+and also residual sugar and density have strong positive correlation with each 
+other.  
+
+# Reflection
+
+The white wine data contains information on almost 4900 wine records across 12 
+variables. I started by understanding the individual variables in the data set, 
+and using different visualizations explored different patterns in the data. 
+Eventually, I explored quality of the wine across all the other variable and 
+created a linear model to predict the quality of the wine.
+
+From the different visualizations we observed that the alcohol content was one 
+of the major factors in affecting the wine quality along with the density. We 
+also realized that as the percent of alcohol content becomes higher in the 
+wine, the wine quality increases however the density decreases. We also found 
+out that at higher density the amount of residual sugar also increases.We also 
+found that as amount of chlorides increase in the wine, its quality decreases. 
+We struggled to find proper concrete relationship between other variables and 
+alcohol and density like pH, volatile acidity, free sulfur dioxide. For the 
+linear model, all the columns in the data were considered however the model 
+was able to account only 28% of variation in the data set. 
+
+Some limitations of the model included the distribution of the data. 
+Most of the wines present in the data set had quality score of 6, if there 
+would have been more variation in the distribution, we might have got better 
+understanding of how the variables affect the quality. None of the variables 
+except for alcohol affected the quality significantly, so here we need more 
+data here to do better linear fitting of the model. To investigate the data 
+further, I would combine the red wine data set to understand the what are the 
+differences between white and red wine. I would also like to see if the factors 
+that affect the quality in white wines play the similar role in red wines.
+
+# References 
+1. https://tools.thermofisher.com/content/sfs/brochures/XX-72102-Wine-
+Analysis-XX72102-EN.pdf
+P. Cortez, A. Cerdeira, F. Almeida, T. Matos and J. Reis. 
+Modeling wine preferences by data mining from physicochemical properties.
+In Decision Support Systems, Elsevier, 47(4):547-553. ISSN: 0167-9236.
+
+2. https://stackoverflow.com/questions/4787332/how-to-remove-outliers-from-a-
+data set
+
+3. https://www.theanalysisfactor.com/outliers-to-drop-or-not-to-drop/
+
+4. http://www.cookbook-r.com/
+
